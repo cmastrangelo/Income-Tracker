@@ -1,0 +1,22 @@
+{
+  "9-18-2019": [
+    {"type": "buy", "symbol": "TERP", "shares": 5, "price": 17.29}
+  ],
+  "9-25-2019": [
+    {"type": "buy", "symbol": "TERP", "shares": 2, "price": 17.64}
+  ],
+  "12-27-2019": [
+    {"type": "buy", "symbol": "SPY", "shares": 1, "price": 323.22}
+  ],
+  "12-30-2019": [
+    {"type": "buy", "symbol": "NTDOY", "shares": 5, "price": 50.27}
+  ],
+  "1-8-2020": [
+    {"type": "buy", "symbol": "GNL", "shares": 9, "price": 20.40}
+  ],
+  "1-27-2020": [
+    {"type": "buy", "symbol": "GNL", "shares": 9, "price": 20.55},
+    {"type": "buy", "symbol": "WPC", "shares": 1, "price": 84.45},
+    {"type": "buy", "symbol": "GNL", "shares": 1, "price": 20.54}
+  ]
+}
