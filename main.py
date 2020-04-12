@@ -1,6 +1,5 @@
 import json
 from helper import convert_to_datetime
-from Trading.Trading_Tracker import Trading_Tracker
 
 
 def get_latest_income():
