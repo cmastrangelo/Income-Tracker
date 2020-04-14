@@ -43,7 +43,9 @@ class Trading_Tracker:
         print(total_monthly_dividend)
 
     def get_account_value_at(self, from_date):
+        print(from_date)
         stocks, cash_used_after_date = self.prepare_stocks_and_cash_for_date(from_date)
+        print(stocks)
 
         starting_business_day = from_date
         starting_value_on_date = Decimal('0')
@@ -56,12 +58,16 @@ class Trading_Tracker:
             starting_value_on_date += equity
         return starting_value_on_date, cash_used_after_date
 
-    def get_profit_from(self, from_date):
+    def get_profit_from(self, from_date, end=None):
         value_on_date, cash_used_after_date = self.get_account_value_at(from_date)
         print(value_on_date, cash_used_after_date)
         total_cash_invested = value_on_date + cash_used_after_date
         print('Total started with:', total_cash_invested)
-        value_on_date, cash_used_after_date = self.get_account_value_at(datetime.datetime.now())
+        if end is None:
+            value_on_date, cash_used_after_date = self.get_account_value_at(datetime.datetime.now())
+        else:
+            print('this thingy')
+            value_on_date, cash_used_after_date = self.get_account_value_at(end)
         print(value_on_date, cash_used_after_date)
         print('Profit in this timeframe:', value_on_date - total_cash_invested)
 
@@ -88,5 +94,5 @@ class Trading_Tracker:
 if __name__ == '__main__':
     tt = Trading_Tracker()
     #two_weeks_ago = datetime.datetime.now() - datetime.timedelta(days=14)
-    tt.get_profit_from(datetime.datetime(2019, 9, 17))
-    #tt.get_monthly_dividend()
+    #tt.get_profit_from(datetime.datetime(2019, 9, 17), end=datetime.datetime(2020, 2, 25))
+    tt.get_monthly_dividend()
