@@ -2,6 +2,7 @@ import json
 import datetime
 from iexfinance.stocks import get_historical_data, Stock
 from decimal import Decimal
+from keys import iexkey
 
 
 class Trading_Tracker:
@@ -14,7 +15,7 @@ class Trading_Tracker:
     def get_iex_price(self, date, symbol):
         start = date
         end = date
-        response = get_historical_data(symbol, start, end, token="pk_f09718e632d8417bb9cc693dbdabac48")
+        response = get_historical_data(symbol, start, end, token=iexkey.iexkey)
         if response == {}:
             return response
         for r in response:
@@ -30,7 +31,7 @@ class Trading_Tracker:
         total_monthly_dividend = Decimal('0')
         for stock in stocks:
             print(stock)
-            dividend_data = Stock(stock, token="pk_f09718e632d8417bb9cc693dbdabac48").get_dividends(range='1y')
+            dividend_data = Stock(stock, token=iexkey.iexkey).get_dividends(range='1y')
             print(dividend_data)
             if dividend_data != []:
                 if dividend_data[0]['frequency'] == 'quarterly':
