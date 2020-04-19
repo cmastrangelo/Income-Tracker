@@ -10,7 +10,7 @@ class Trading_Tracker:
         self.orders = self.load_orders()
 
     def convert_to_datetime(self, date):
-        return datetime.datetime.strptime(date, '%m-%d-%Y')
+        return datetime.datetime.strptime(date, '%Y-%m-%d')
 
     def get_iex_price(self, date, symbol):
         start = date
@@ -24,6 +24,37 @@ class Trading_Tracker:
     def load_orders(self):
         with open('data/trades.json', 'r') as f:
             return json.loads(f.read())
+
+    def get_actual_dividend(self, from_date, end=None):
+        unique_stocks = self.get_all_unique_stocks(from_date, end)
+        dividend_data = {}
+        for symbol in unique_stocks:
+            stock_dividend_data = Stock(symbol, token=iexkey.iexkey).get_dividends(range='1y')
+            dividend_data[symbol] = stock_dividend_data
+        total_dividend_payout = Decimal('0')
+        for symbol in unique_stocks:
+            for dividend_pay_data in dividend_data[symbol]:
+                payday_date = self.convert_to_datetime(dividend_pay_data['exDate'])
+                stocks, cash_used_after_date = self.prepare_stocks_and_cash_for_date(payday_date)
+                if symbol in stocks and dividend_pay_data['amount'] != '':
+                    print(symbol, dividend_pay_data)
+                    print(round(Decimal(str(stocks[symbol])) * Decimal(dividend_pay_data['amount']), 2))
+                    total_dividend_payout += round(Decimal(str(stocks[symbol])) * Decimal(dividend_pay_data['amount']), 2)
+        print(total_dividend_payout)
+        return total_dividend_payout
+
+    def get_all_unique_stocks(self, from_date, end=None):
+        stocks, cash_used_after_date = self.prepare_stocks_and_cash_for_date(from_date)
+        unique_stocks = []
+        for stock in stocks:
+            unique_stocks.append(stock)
+        for date in self.orders:
+            if self.convert_to_datetime(date) >= from_date:
+                if (end is not None and self.convert_to_datetime(date) <= end) or end is None:
+                    for trade in self.orders[date]:
+                        if trade['symbol'] not in unique_stocks:
+                            unique_stocks.append(trade['symbol'])
+        return unique_stocks
 
     def get_monthly_dividend(self):
         stocks, cash_used_after_date = self.prepare_stocks_and_cash_for_date(datetime.datetime.now())
@@ -71,6 +102,14 @@ class Trading_Tracker:
             value_on_date, cash_used_after_date = self.get_account_value_at(end)
         print(value_on_date, cash_used_after_date)
         print('Profit in this timeframe:', value_on_date - total_cash_invested)
+        return value_on_date - total_cash_invested
+
+    def get_full_return(self, from_date, end=None):
+        total_profit = self.get_profit_from(from_date, end)
+        total_dividend = self.get_actual_dividend(from_date, end=None)
+        print('Total from price fluctuations', total_profit)
+        print('Total from dividends', total_dividend)
+        print('Total profit', total_profit + total_dividend)
 
     def prepare_stocks_and_cash_for_date(self, from_date):
         stocks = {}
@@ -96,4 +135,5 @@ if __name__ == '__main__':
     tt = Trading_Tracker()
     #two_weeks_ago = datetime.datetime.now() - datetime.timedelta(days=14)
     #tt.get_profit_from(datetime.datetime(2019, 9, 17), end=datetime.datetime(2020, 2, 25))
-    tt.get_monthly_dividend()
+    #tt.get_monthly_dividend()
+    tt.get_full_return(datetime.datetime(2019, 9, 17))
