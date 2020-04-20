@@ -3,14 +3,53 @@ import datetime
 from iexfinance.stocks import get_historical_data, Stock
 from decimal import Decimal
 from keys import iexkey
+from tabulate import tabulate
 
 
 class Trading_Tracker:
     def __init__(self):
         self.orders = self.load_orders()
 
+    def calculate_total_profit_dividend_each_symbol(self, total_profit_each_symbol, total_dividend_each_symbol):
+        total_profit_dividend_each_symbol = {}
+        for symbol in total_profit_each_symbol:
+            total_profit_dividend_each_symbol[symbol] = total_profit_each_symbol[symbol]
+            if symbol in total_dividend_each_symbol:
+                total_profit_dividend_each_symbol[symbol] += total_dividend_each_symbol[symbol]
+        return total_profit_dividend_each_symbol
+
+    def calculate_profit_overall(self, total_profit_dividend_each_symbol):
+        total_overall = Decimal('0')
+        for symbol in total_profit_dividend_each_symbol:
+            total_overall += total_profit_dividend_each_symbol[symbol]
+        return total_overall
+
     def convert_to_datetime(self, date):
         return datetime.datetime.strptime(date, '%Y-%m-%d')
+
+    def display_full_return_table(
+            self,
+            total_profit_each_symbol,
+            total_dividend_each_symbol,
+            total_profit_dividend_each_symbol,
+            total_profit_overall
+    ):
+        table = [['Symbol', 'Trading Profit', 'Dividend Profit', 'Total']]
+        for symbol in total_profit_each_symbol:
+            table.append([
+                symbol,
+                total_profit_each_symbol[symbol],
+                '' if symbol not in total_dividend_each_symbol else total_dividend_each_symbol[symbol],
+                total_profit_dividend_each_symbol[symbol]
+            ])
+        total_trading_overall = Decimal('0')
+        total_dividend_overall = Decimal('0')
+        for symbol in total_profit_each_symbol:
+            total_trading_overall += total_profit_each_symbol[symbol]
+            if symbol in total_dividend_each_symbol:
+                total_dividend_overall += total_dividend_each_symbol[symbol]
+        table.append(['Total', total_trading_overall, total_dividend_overall, total_profit_overall])
+        print(tabulate(table, headers="firstrow", tablefmt="github"))
 
     def get_iex_price(self, date, symbol):
         start = date
@@ -27,21 +66,21 @@ class Trading_Tracker:
 
     def get_actual_dividend(self, from_date, end=None):
         unique_stocks = self.get_all_unique_stocks(from_date, end)
-        dividend_data = {}
+        dividend_data_each_symbol = {}
         for symbol in unique_stocks:
             stock_dividend_data = Stock(symbol, token=iexkey.iexkey).get_dividends(range='1y')
-            dividend_data[symbol] = stock_dividend_data
-        total_dividend_payout = Decimal('0')
+            dividend_data_each_symbol[symbol] = stock_dividend_data
+        total_dividend_payout_each_symbol = {}
         for symbol in unique_stocks:
-            for dividend_pay_data in dividend_data[symbol]:
+            for dividend_pay_data in dividend_data_each_symbol[symbol]:
                 payday_date = self.convert_to_datetime(dividend_pay_data['exDate'])
                 stocks, cash_used_after_date = self.prepare_stocks_and_cash_for_date(payday_date)
                 if symbol in stocks and dividend_pay_data['amount'] != '':
-                    print(symbol, dividend_pay_data)
-                    print(round(Decimal(str(stocks[symbol])) * Decimal(dividend_pay_data['amount']), 2))
-                    total_dividend_payout += round(Decimal(str(stocks[symbol])) * Decimal(dividend_pay_data['amount']), 2)
-        print(total_dividend_payout)
-        return total_dividend_payout
+                    if symbol not in total_dividend_payout_each_symbol:
+                        total_dividend_payout_each_symbol[symbol] = round(Decimal(str(stocks[symbol])) * Decimal(dividend_pay_data['amount']), 2)
+                    else:
+                        total_dividend_payout_each_symbol[symbol] += round(Decimal(str(stocks[symbol])) * Decimal(dividend_pay_data['amount']), 2)
+        return total_dividend_payout_each_symbol
 
     def get_all_unique_stocks(self, from_date, end=None):
         stocks, cash_used_after_date = self.prepare_stocks_and_cash_for_date(from_date)
@@ -74,46 +113,59 @@ class Trading_Tracker:
                     print(dividend_data['frequency'])
         print(total_monthly_dividend)
 
-    def get_account_value_at(self, from_date):
-        print(from_date)
-        stocks, cash_used_after_date = self.prepare_stocks_and_cash_for_date(from_date)
-        print(stocks)
+    def get_account_value_at(self, from_date, end = None):
+        stocks, cash_used_after_date_each_symbol = self.prepare_stocks_and_cash_for_date(from_date, end)
 
         starting_business_day = from_date
-        starting_value_on_date = Decimal('0')
-        for stock in stocks:
-            price = self.get_iex_price(starting_business_day, stock)
+        starting_value_on_date_each_symbol = {}
+        for symbol in stocks:
+            if symbol not in starting_value_on_date_each_symbol:
+                starting_value_on_date_each_symbol[symbol] = Decimal('0')
+            price = self.get_iex_price(starting_business_day, symbol)
             while price == {}:
                 starting_business_day -= datetime.timedelta(days=1)
-                price = self.get_iex_price(starting_business_day, stock)
-            equity = Decimal(str(price['close'])) * Decimal(str(stocks[stock]))
-            starting_value_on_date += equity
-        return starting_value_on_date, cash_used_after_date
+                price = self.get_iex_price(starting_business_day, symbol)
+            equity = Decimal(str(price['close'])) * Decimal(str(stocks[symbol]))
+            starting_value_on_date_each_symbol[symbol] += equity
+        return starting_value_on_date_each_symbol, cash_used_after_date_each_symbol
 
     def get_profit_from(self, from_date, end=None):
-        value_on_date, cash_used_after_date = self.get_account_value_at(from_date)
-        print(value_on_date, cash_used_after_date)
-        total_cash_invested = value_on_date + cash_used_after_date
-        print('Total started with:', total_cash_invested)
+        value_on_date_each_symbol, cash_used_after_date_each_symbol = self.get_account_value_at(from_date, end)
+        total_cash_invested_each_symbol = {}
+        for symbol in value_on_date_each_symbol:
+            total_cash_invested_each_symbol[symbol] = value_on_date_each_symbol[symbol]
+        for symbol in cash_used_after_date_each_symbol:
+            if symbol in total_cash_invested_each_symbol:
+                total_cash_invested_each_symbol[symbol] += cash_used_after_date_each_symbol[symbol]
+            else:
+                total_cash_invested_each_symbol[symbol] = cash_used_after_date_each_symbol[symbol]
         if end is None:
-            value_on_date, cash_used_after_date = self.get_account_value_at(datetime.datetime.now())
+            value_on_date_each_symbol, cash_used_after_date_each_symbol = self.get_account_value_at(datetime.datetime.now(), end)
         else:
-            print('this thingy')
-            value_on_date, cash_used_after_date = self.get_account_value_at(end)
-        print(value_on_date, cash_used_after_date)
-        print('Profit in this timeframe:', value_on_date - total_cash_invested)
-        return value_on_date - total_cash_invested
+            value_on_date_each_symbol, cash_used_after_date_each_symbol = self.get_account_value_at(end, end)
+        final_profit_for_each_symbol = {}
+        for symbol in value_on_date_each_symbol:
+            final_profit_for_each_symbol[symbol] = value_on_date_each_symbol[symbol] - total_cash_invested_each_symbol[symbol]
+        return final_profit_for_each_symbol
 
     def get_full_return(self, from_date, end=None):
-        total_profit = self.get_profit_from(from_date, end)
-        total_dividend = self.get_actual_dividend(from_date, end=None)
-        print('Total from price fluctuations', total_profit)
-        print('Total from dividends', total_dividend)
-        print('Total profit', total_profit + total_dividend)
+        total_profit_each_symbol = self.get_profit_from(from_date, end)
+        total_dividend_each_symbol = self.get_actual_dividend(from_date, end=None)
+        total_profit_dividend_each_symbol = self.calculate_total_profit_dividend_each_symbol(
+            total_profit_each_symbol,
+            total_dividend_each_symbol
+        )
+        total_profit_overall = self.calculate_profit_overall(total_profit_dividend_each_symbol)
+        print('Total from price fluctuations', total_profit_each_symbol)
+        print('Total from dividends', total_dividend_each_symbol)
+        print('Total from price and dividends', total_profit_dividend_each_symbol)
+        print('Total overall', total_profit_overall)
+        self.display_full_return_table(total_profit_each_symbol, total_dividend_each_symbol, total_profit_dividend_each_symbol, total_profit_overall)
+        #print('Total profit', total_profit + total_dividend)
 
-    def prepare_stocks_and_cash_for_date(self, from_date):
+    def prepare_stocks_and_cash_for_date(self, from_date, end=None):
         stocks = {}
-        cash_used_after_date = Decimal('0')
+        cash_used_after_date_each_symbol = {}
         for date in self.orders:
             if self.convert_to_datetime(date) < from_date:
                 for order in self.orders[date]:
@@ -126,9 +178,13 @@ class Trading_Tracker:
                         # Probably will need to adjust cash_used_after_date once we have sell orders
                         stocks[order['symbol']] -= order['shares']
             if self.convert_to_datetime(date) >= from_date:
+                if end is not None and self.convert_to_datetime(date) >= end:
+                    break
                 for order in self.orders[date]:
-                    cash_used_after_date += Decimal(str(order['shares'])) * Decimal(str(order['price']))
-        return stocks, cash_used_after_date
+                    if order['symbol'] not in cash_used_after_date_each_symbol:
+                        cash_used_after_date_each_symbol[order['symbol']] = Decimal('0')
+                    cash_used_after_date_each_symbol[order['symbol']] += Decimal(str(order['shares'])) * Decimal(str(order['price']))
+        return stocks, cash_used_after_date_each_symbol
 
 
 if __name__ == '__main__':
