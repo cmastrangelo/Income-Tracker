@@ -4,10 +4,13 @@ from iexfinance.stocks import get_historical_data, Stock
 from decimal import Decimal
 from keys import iexkey
 from tabulate import tabulate
+from colorama import init
+from termcolor import colored
 
 
 class Trading_Tracker:
-    def __init__(self):
+    def __init__(self, trades_location='Trading/data/'):
+        self.trades_location = trades_location
         self.orders = self.load_orders()
 
     def calculate_total_profit_dividend_each_symbol(self, total_profit_each_symbol, total_dividend_each_symbol):
@@ -38,9 +41,9 @@ class Trading_Tracker:
         for symbol in total_profit_each_symbol:
             table.append([
                 symbol,
-                total_profit_each_symbol[symbol],
-                '' if symbol not in total_dividend_each_symbol else total_dividend_each_symbol[symbol],
-                total_profit_dividend_each_symbol[symbol]
+                colored(total_profit_each_symbol[symbol], 'green' if total_profit_each_symbol[symbol] >= 0 else 'red'),
+                '' if symbol not in total_dividend_each_symbol else colored(total_dividend_each_symbol[symbol], 'green' if total_dividend_each_symbol[symbol] >= 0 else 'red'),
+                colored(total_profit_dividend_each_symbol[symbol], 'green' if total_profit_dividend_each_symbol[symbol] >= 0 else 'red')
             ])
         total_trading_overall = Decimal('0')
         total_dividend_overall = Decimal('0')
@@ -48,7 +51,12 @@ class Trading_Tracker:
             total_trading_overall += total_profit_each_symbol[symbol]
             if symbol in total_dividend_each_symbol:
                 total_dividend_overall += total_dividend_each_symbol[symbol]
-        table.append(['Total', total_trading_overall, total_dividend_overall, total_profit_overall])
+        table.append([
+            'Total',
+            colored(total_trading_overall, 'green' if total_trading_overall >= 0 else 'red'),
+            colored(total_dividend_overall, 'green' if total_dividend_overall >= 0 else 'red'),
+            colored(total_profit_overall, 'green' if total_profit_overall >= 0 else 'red')
+        ])
         print(tabulate(table, headers="firstrow", tablefmt="github"))
 
     def get_iex_price(self, date, symbol):
@@ -61,7 +69,7 @@ class Trading_Tracker:
             return response[r]
 
     def load_orders(self):
-        with open('data/trades.json', 'r') as f:
+        with open(self.trades_location + 'trades.json', 'r') as f:
             return json.loads(f.read())
 
     def get_actual_dividend(self, from_date, end=None):
@@ -149,19 +157,16 @@ class Trading_Tracker:
         return final_profit_for_each_symbol
 
     def get_full_return(self, from_date, end=None):
+        print('Downloading prices...')
         total_profit_each_symbol = self.get_profit_from(from_date, end)
+        print('Downloading dividends data...')
         total_dividend_each_symbol = self.get_actual_dividend(from_date, end=None)
         total_profit_dividend_each_symbol = self.calculate_total_profit_dividend_each_symbol(
             total_profit_each_symbol,
             total_dividend_each_symbol
         )
         total_profit_overall = self.calculate_profit_overall(total_profit_dividend_each_symbol)
-        print('Total from price fluctuations', total_profit_each_symbol)
-        print('Total from dividends', total_dividend_each_symbol)
-        print('Total from price and dividends', total_profit_dividend_each_symbol)
-        print('Total overall', total_profit_overall)
         self.display_full_return_table(total_profit_each_symbol, total_dividend_each_symbol, total_profit_dividend_each_symbol, total_profit_overall)
-        #print('Total profit', total_profit + total_dividend)
 
     def prepare_stocks_and_cash_for_date(self, from_date, end=None):
         stocks = {}
@@ -188,7 +193,8 @@ class Trading_Tracker:
 
 
 if __name__ == '__main__':
-    tt = Trading_Tracker()
+    init()  # Initializes the colorama for colored text
+    tt = Trading_Tracker(trades_location='data/')
     #two_weeks_ago = datetime.datetime.now() - datetime.timedelta(days=14)
     #tt.get_profit_from(datetime.datetime(2019, 9, 17), end=datetime.datetime(2020, 2, 25))
     #tt.get_monthly_dividend()
