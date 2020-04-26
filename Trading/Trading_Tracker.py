@@ -13,6 +13,12 @@ class Trading_Tracker:
         self.trades_location = trades_location
         self.orders = self.load_orders()
 
+    def calculate_total_profit_all_symbols(self, total_profit_each_symbol):
+        total_profit = 0
+        for symbol in total_profit_each_symbol:
+            total_profit += total_profit_each_symbol[symbol]
+        return total_profit
+
     def calculate_total_profit_dividend_each_symbol(self, total_profit_each_symbol, total_dividend_each_symbol):
         total_profit_dividend_each_symbol = {}
         for symbol in total_profit_each_symbol:
@@ -37,7 +43,7 @@ class Trading_Tracker:
             total_profit_dividend_each_symbol,
             total_profit_overall
     ):
-        table = [['Symbol', 'Trading Profit', 'Dividend Profit', 'Total']]
+        table = [['Symbol', 'Price Change', 'Dividend', 'Total']]
         for symbol in total_profit_each_symbol:
             table.append([
                 symbol,
