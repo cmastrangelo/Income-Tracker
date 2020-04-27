@@ -2,6 +2,7 @@ import json
 from helper import convert_to_datetime
 from Trading.Trading_Tracker import Trading_Tracker
 import datetime
+from decimal import Decimal
 
 
 def get_latest_income():
@@ -30,7 +31,7 @@ def get_snapshots_data():
 
 def save_snapshots_data(snapshot_data):
     with open('data/snapshots/snapshots.json', 'w') as f:
-        json.dump(f, snapshot_data)
+        json.dump(snapshot_data, f)
 
 
 def update_all_snapshots_required():
@@ -50,7 +51,7 @@ def update_all_snapshots_required():
                         convert_to_datetime(income_date)
                     )
                 )
-            snapshot_data[income_date] = {'income': income_data[income_date], 'trading': trading_profit}
+            snapshot_data[income_date] = {'income': income_data[income_date], 'trading': str(trading_profit)}
         previous_payday = income_date
     save_snapshots_data(snapshot_data)
 
@@ -58,6 +59,23 @@ def update_all_snapshots_required():
 def snapshot_stats():
     snapshots_data = get_snapshots_data()
     yearly_data = {}
+    for snapshot_date in snapshots_data:
+        date = convert_to_datetime(snapshot_date)
+        if date.year not in yearly_data:
+            yearly_data[date.year] = {
+                'total': Decimal(str(snapshots_data[snapshot_date]['income'])),
+                'count': Decimal('1')
+            }
+        else:
+            yearly_data[date.year]['total'] += Decimal(str(snapshots_data[snapshot_date]['income']))
+            yearly_data[date.year]['count'] += Decimal('1')
+    print('Total income per year:')
+    for year in yearly_data:
+        print(year, '-', yearly_data[year]['total'])
+    print('Average paycheck per year:')
+    for year in yearly_data:
+        print(year, '-', round(yearly_data[year]['total'] / yearly_data[year]['count'], 2))
+
 
 
 
@@ -78,4 +96,5 @@ if __name__ == "__main__":
     # Getting full income for payperiod
     #latest_income_date, income_amount = get_latest_income()
     #run_menu()
-    update_all_snapshots_required()
+    #update_all_snapshots_required()
+    snapshot_stats()

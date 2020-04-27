@@ -1,5 +1,7 @@
 venv/
 __pycache__/
 Job/income.json
+data/Job/income.json
+data/Snapshots/snapshots.json
 .idea/
 keys/iexkey.py
